@@ -71,7 +71,9 @@ export const Navbar = () => {
   };
 
   return (
-    <nav className='fixed max-w-[100vw] top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/30 border-b border-white/20'>
+    <nav className={`fixed max-w-[100vw] top-0 left-0 right-0 z-50 ${
+      hasScrolled ? 'backdrop-blur-sm bg-white/30 border-b border-white/20' : ''
+    }`}>
       <div className='max-w-7xl mx-auto px-4'>
         <div className='flex items-center justify-between h-16'>
           <NextLink href='/' className='text-[#004B87] py-2.5'>
@@ -80,7 +82,7 @@ export const Navbar = () => {
               alt='Peak Life Journey'
               width={85}
               height={85}
-              className={`w-[65px] md:w-[85px] h-auto transition-all duration-300 ${
+              className={`w-[65px] md:w-[75px] h-auto transition-all duration-300 ${
                 hasScrolled || !isHomePage ? "" : "brightness-0 invert"
               }`}
               priority

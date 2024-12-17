@@ -40,7 +40,7 @@ export const Hero = () => {
     
     return (
       <>
-        <div className='aspect-video rounded-xl overflow-hidden mb-3'>
+        <div className='mt-4 aspect-video rounded-xl overflow-hidden mb-3'>
           <div 
             dangerouslySetInnerHTML={{ __html: latestEpisode.embedCode }}
             className="w-full h-full"
@@ -76,11 +76,7 @@ export const Hero = () => {
       <div className='absolute inset-0 bg-[linear-gradient(to_bottom,transparent_80%,#0C4A6E_100%)] z-0' />
 
       <div className='relative z-10 max-w-7xl mx-auto px-4 h-full flex flex-col justify-center'>
-        <div className='mb-2'>
-          <span className='text-sky-900 tracking-wider text-sm font-medium bg-white/80 backdrop-blur-sm px-3 py-1 rounded-full shadow-sm'>
-            PEAK LIFE JOURNEY
-          </span>
-        </div>
+       
 
         <div className='grid lg:grid-cols-2 gap-8 items-center'>
           <div className='space-y-6'>
