@@ -93,11 +93,11 @@ export const About = () => {
           ))}
         </div>
 
-        <div className="grid md:grid-cols-2 gap-12">
+        <div className="grid md:grid-cols-2 gap-12 max-w-lg md:max-w-none mx-auto">
           <Card className="backdrop-blur-md bg-white/30 border-white/20 p-8 h-full shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/40 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="flex flex-col h-full relative z-10">
-              <div className="p-3 bg-amber-500/10 rounded-full w-fit mb-4">
+            <div className="flex flex-col h-full relative z-10 text-center md:text-left">
+              <div className="p-3 bg-amber-500/10 rounded-full w-fit mb-4 mx-auto md:mx-0">
                 <Stars className="w-6 h-6 text-amber-500" />
               </div>
               <h3 className="text-2xl font-bold text-amber-900 mb-4">Our Vision</h3>
@@ -108,8 +108,8 @@ export const About = () => {
           </Card>
           <Card className="backdrop-blur-md bg-white/30 border-white/20 p-8 h-full shadow-lg hover:shadow-xl transition-all duration-300 hover:bg-white/40 relative overflow-hidden group">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            <div className="flex flex-col h-full relative z-10">
-              <div className="p-3 bg-amber-500/10 rounded-full w-fit mb-4">
+            <div className="flex flex-col h-full relative z-10 text-center md:text-left">
+              <div className="p-3 bg-amber-500/10 rounded-full w-fit mb-4 mx-auto md:mx-0">
                 <Mountain className="w-6 h-6 text-amber-500" />
               </div>
               <h3 className="text-2xl font-bold text-amber-900 mb-4">Our Mission</h3>

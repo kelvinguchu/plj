@@ -9,21 +9,21 @@ import { News } from "@/components/News";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-gradient-to-b from-primary-dark to-primary/20">
+    <main className='min-h-screen bg-gradient-to-b from-primary-dark to-primary/20'>
       <Hero />
-      <section id="news">
-        <News />
-      </section>
-      <section id="episodes">
+      <section id='episodes'>
         <LatestEpisodes />
       </section>
-      <section id="about">
+      <section id='about'>
         <About />
       </section>
-      <section id="guests">
+      <section id='guests'>
         <Guests />
       </section>
-      <section id="contact">
+      <section id='news'>
+        <News />
+      </section>
+      <section id='contact'>
         <Contact />
       </section>
     </main>

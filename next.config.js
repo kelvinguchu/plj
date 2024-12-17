@@ -4,6 +4,14 @@ const nextConfig = {
   swcMinify: true,
   images: {
     domains: ["images.unsplash.com"],
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'res.cloudinary.com',
+        port: '',
+        pathname: '/**',
+      },
+    ],
   },
   webpack: (config, { isServer }) => {
     if (!isServer) {

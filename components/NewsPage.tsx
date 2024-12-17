@@ -4,102 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Home } from "lucide-react";
 import Link from "next/link";
-import { useState, useEffect } from "react";
-import { Navbar } from "@/components/Navbar";
-import { Footer } from "@/components/Footer";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-
-// This would typically come from an API or database
-const allNewsStories = [
-  {
-    title: "The Science of Deep Sleep",
-    date: "October 15, 2023",
-    category: "Wellness",
-    excerpt:
-      "Discover the latest research on how deep sleep affects cognitive performance and emotional well-being.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?auto=format&fit=crop&q=80",
-    readTime: "5 min read",
-  },
-  {
-    title: "Marathon Success Stories",
-    date: "October 12, 2023",
-    category: "Performance",
-    excerpt:
-      "Meet the everyday heroes who transformed their lives through long-distance running.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1552674605-db6ffd4facb5?auto=format&fit=crop&q=80",
-    readTime: "8 min read",
-  },
-  {
-    title: "Mindfulness in the Digital Age",
-    date: "October 10, 2023",
-    category: "Mental Health",
-    excerpt:
-      "How to maintain mental clarity and focus in an increasingly connected world.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1544367567-0f2fcb009e0b?auto=format&fit=crop&q=80",
-    readTime: "6 min read",
-  },
-  {
-    title: "Nutrition Myths Debunked",
-    date: "October 8, 2023",
-    category: "Health",
-    excerpt:
-      "Leading nutritionists separate fact from fiction in popular diet trends.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1490645935967-10de6ba17061?auto=format&fit=crop&q=80",
-    readTime: "7 min read",
-  },
-  {
-    title: "The Power of Cold Therapy",
-    date: "October 5, 2023",
-    category: "Wellness",
-    excerpt:
-      "Exploring the benefits of cold exposure for physical and mental resilience.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1562832135-14a35d25edef?auto=format&fit=crop&q=80",
-    readTime: "4 min read",
-  },
-  {
-    title: "Plant-Based Performance",
-    date: "October 3, 2023",
-    category: "Nutrition",
-    excerpt:
-      "How elite athletes are thriving on plant-based diets and breaking records.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&q=80",
-    readTime: "6 min read",
-  },
-  {
-    title: "Sleep Optimization Tips",
-    date: "October 1, 2023",
-    category: "Health",
-    excerpt:
-      "Expert-backed strategies for getting the most restorative sleep possible.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1511295742362-92c96b5adb36?auto=format&fit=crop&q=80",
-    readTime: "5 min read",
-  },
-  {
-    title: "Meditation for Beginners",
-    date: "September 28, 2023",
-    category: "Mental Health",
-    excerpt: "A comprehensive guide to starting your meditation practice.",
-    imageUrl:
-      "https://images.unsplash.com/photo-1506126613408-eca07ce68773?auto=format&fit=crop&q=80",
-    readTime: "9 min read",
-  },
-];
-
-const categories = [
-  "All",
-  "Wellness",
-  "Performance",
-  "Mental Health",
-  "Nutrition",
-  "Health",
-];
+import { useQuery } from "@tanstack/react-query";
+import { getSortedPostsData, getCategories } from "@/lib/blogService";
+import { Loader } from "@/components/ui/loader";
+import { slugify } from "@/lib/utils";
 
 export default function NewsPage() {
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -110,18 +20,48 @@ export default function NewsPage() {
     window.scrollTo(0, 0);
   }, []);
 
-  const filteredStories =
-    selectedCategory === "All"
-      ? allNewsStories
-      : allNewsStories.filter((story) => story.category === selectedCategory);
+  // Fetch posts and categories with caching
+  const { data: posts = [] } = useQuery({
+    queryKey: ["posts"],
+    queryFn: getSortedPostsData,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+  });
 
-  const totalPages = Math.ceil(filteredStories.length / storiesPerPage);
-  const indexOfLastStory = currentPage * storiesPerPage;
-  const indexOfFirstStory = indexOfLastStory - storiesPerPage;
-  const currentStories = filteredStories.slice(
-    indexOfFirstStory,
-    indexOfLastStory
-  );
+  const { data: categories = [] } = useQuery({
+    queryKey: ["categories"],
+    queryFn: getCategories,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    gcTime: 1000 * 60 * 30, // 30 minutes
+  });
+
+  // Add "All" to categories
+  const allCategories = useMemo(() => {
+    return ["All", ...categories.map((cat) => cat.name)];
+  }, [categories]);
+
+  // Filter posts by category
+  const filteredPosts = useMemo(() => {
+    return selectedCategory === "All"
+      ? posts
+      : posts.filter((post) => post.categoryName === selectedCategory);
+  }, [selectedCategory, posts]);
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredPosts.length / storiesPerPage);
+  const currentStories = useMemo(() => {
+    const indexOfLastStory = currentPage * storiesPerPage;
+    const indexOfFirstStory = indexOfLastStory - storiesPerPage;
+    return filteredPosts.slice(indexOfFirstStory, indexOfLastStory);
+  }, [currentPage, filteredPosts, storiesPerPage]);
+
+  if (posts.length === 0 || categories.length === 0) {
+    return (
+      <div className='min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-50 to-white'>
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className='min-h-screen bg-gradient-to-b from-amber-50 to-white flex flex-col'>
@@ -141,70 +81,87 @@ export default function NewsPage() {
             </div>
           </div>
 
-          {/* Filter Section */}
-          <div className='flex flex-wrap gap-3 mb-12 justify-center'>
-            {categories.map((category) => (
-              <Button
-                key={category}
-                variant={category === selectedCategory ? "default" : "outline"}
-                onClick={() => {
-                  setSelectedCategory(category);
-                  setCurrentPage(1);
-                }}
-                className={`
-                  rounded-full px-6 
-                  ${
-                    category === selectedCategory
-                      ? "bg-amber-500 hover:bg-amber-600 text-white"
-                      : "text-[#1a3152] hover:text-amber-600 border-amber-200"
-                  }
-                `}>
-                {category}
-              </Button>
-            ))}
+          {/* Filter Section - Updated for horizontal scroll */}
+          <div className='mb-12 -mx-4 sm:mx-0'>
+            <div className='px-4 sm:px-0 overflow-x-auto'>
+              <div className='flex gap-3 pb-4 sm:pb-0 sm:flex-wrap sm:justify-center min-w-min'>
+                {allCategories.map((category) => (
+                  <Button
+                    key={category}
+                    variant={category === selectedCategory ? "default" : "outline"}
+                    onClick={() => {
+                      setSelectedCategory(category);
+                      setCurrentPage(1);
+                    }}
+                    className={`
+                      rounded-full px-6 whitespace-nowrap flex-shrink-0
+                      ${
+                        category === selectedCategory
+                          ? "bg-amber-500 hover:bg-amber-600 text-white"
+                          : "text-[#1a3152] hover:text-amber-600 border-amber-200"
+                      }
+                    `}>
+                    {category}
+                  </Button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* News Grid */}
-          <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12'>
-            {currentStories.map((story, index) => (
-              <Card
-                key={index}
-                className='group hover:shadow-xl transition-all duration-300 overflow-hidden backdrop-blur-md bg-white/30 border-white/20'>
-                <div className='aspect-video w-full overflow-hidden bg-amber-100 relative'>
-                  <Image
-                    src={story.imageUrl}
-                    alt={story.title}
-                    fill
-                    className='object-cover group-hover:scale-105 transition-transform duration-300'
-                  />
-                </div>
-                <div className='p-6'>
-                  <div className='flex items-center justify-between mb-3'>
-                    <span className='text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full'>
-                      {story.category}
-                    </span>
-                    <span className='text-sm text-gray-500'>
-                      {story.readTime}
-                    </span>
-                  </div>
-                  <h3 className='font-semibold text-xl text-[#1a3152] mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors'>
-                    {story.title}
-                  </h3>
-                  <p className='text-gray-600 mb-4 line-clamp-3'>
-                    {story.excerpt}
-                  </p>
-                  <div className='flex items-center justify-between'>
-                    <span className='text-sm text-gray-500'>{story.date}</span>
-                    <Button
-                      variant='ghost'
-                      className='text-amber-600 hover:text-amber-700 p-0'>
-                      Read More
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            ))}
-          </div>
+          {currentStories.length === 0 ? (
+            <div className='text-center py-12 text-gray-500'>
+              No posts found in this category.
+            </div>
+          ) : (
+            <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-12'>
+              {currentStories.map((post) => (
+                <Link href={`/news/${slugify(post.title)}`} key={post.id}>
+                  <Card className='group hover:shadow-xl transition-all duration-300 overflow-hidden backdrop-blur-md bg-white/30 border-white/20'>
+                    {post.image && (
+                      <div className='aspect-video w-full overflow-hidden bg-amber-100 relative'>
+                        <Image
+                          src={post.image}
+                          alt={post.title}
+                          fill
+                          className='object-cover group-hover:scale-105 transition-transform duration-300'
+                          sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <div className='p-6'>
+                      <div className='flex items-center justify-between mb-3'>
+                        <span className='text-sm font-medium text-amber-600 bg-amber-50 px-3 py-1 rounded-full'>
+                          {post.categoryName || "Uncategorized"}
+                        </span>
+                        <span className='text-sm text-gray-500'>
+                          {new Date(post.date).toLocaleDateString("en-US", {
+                            year: "numeric",
+                            month: "long",
+                            day: "numeric",
+                          })}
+                        </span>
+                      </div>
+                      <h3 className='font-semibold text-xl text-[#1a3152] mb-3 line-clamp-2 group-hover:text-amber-600 transition-colors'>
+                        {post.title}
+                      </h3>
+                      <p className='text-gray-600 mb-4 line-clamp-3'>
+                        {post.content.substring(0, 150)}...
+                      </p>
+                      <div className='flex justify-end'>
+                        <Button
+                          variant='ghost'
+                          className='text-amber-600 hover:text-amber-700 p-0'>
+                          Read More
+                        </Button>
+                      </div>
+                    </div>
+                  </Card>
+                </Link>
+              ))}
+            </div>
+          )}
 
           {/* Pagination */}
           {totalPages > 1 && (
@@ -245,15 +202,6 @@ export default function NewsPage() {
             </div>
           )}
         </div>
-
-        {/* Floating Home Button */}
-        <Link href='/' className='fixed bottom-8 right-8 z-50'>
-          <Button
-            size='lg'
-            className='rounded-full w-8 h-8 bg-amber-500 hover:bg-amber-600 text-white shadow-lg hover:shadow-xl transition-all duration-300'>
-            <Home className='h-6 w-6' />
-          </Button>
-        </Link>
       </div>
     </div>
   );

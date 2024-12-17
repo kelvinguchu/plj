@@ -1,8 +1,9 @@
 import type { Metadata } from 'next'
+import { Montserrat } from 'next/font/google'
 import './globals.css'
 import { Navbar } from '@/components/Navbar'
 import { Footer } from '@/components/Footer'
-import { Montserrat } from 'next/font/google'
+import Providers from './providers'
 
 const montserrat = Montserrat({
   subsets: ['latin'],
@@ -12,6 +13,9 @@ const montserrat = Montserrat({
 export const metadata: Metadata = {
   title: 'Peak Life Journey',
   description: 'Experience the peak of entertainment and vibes',
+  icons: {
+    icon: '/favicon.png',
+  },
 }
 
 export default function RootLayout({
@@ -22,9 +26,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${montserrat.className}`}>
-        <Navbar />
-        {children}
-        <Footer />
+        <Providers>
+          <Navbar />
+          {children}
+          <Footer />
+        </Providers>
       </body>
     </html>
   )

@@ -12,21 +12,36 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, ChevronDown } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import { usePathname } from "next/navigation";
+import { SubscribeDropdown } from "@/components/SubscribeDropdown";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [hasScrolled, setHasScrolled] = useState(false);
+  const pathname = usePathname();
+  const isHomePage = pathname === "/";
+
+  useEffect(() => {
+    const handleScroll = () => {
+      setHasScrolled(window.scrollY > 0);
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
 
   const platforms = [
     {
       name: "Spotify",
       icon: <SiSpotify className='h-5 w-5' />,
-      link: "#",
+      link: "https://open.spotify.com/show/7ap7YD9kvk4vT418WDur2e",
     },
     {
       name: "YouTube",
       icon: <SiYoutube className='h-5 w-5' />,
-      link: "#",
+      link: "https://www.youtube.com/@PeakLifeJourneyPodcast",
     },
     {
       name: "Apple Podcasts",
@@ -41,12 +56,35 @@ export const Navbar = () => {
     setIsOpen(false);
   };
 
+  const getTextColor = () => {
+    if (isHomePage && !hasScrolled) {
+      return "text-white";
+    }
+    return "text-[#1a3152]";
+  };
+
+  const getHoverColor = () => {
+    if (isHomePage && !hasScrolled) {
+      return "hover:text-white/80";
+    }
+    return "hover:text-[#2B4C7E]";
+  };
+
   return (
-    <nav className='fixed top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/30 border-b border-white/20'>
+    <nav className='fixed max-w-[100vw] top-0 left-0 right-0 z-50 backdrop-blur-sm bg-white/30 border-b border-white/20'>
       <div className='max-w-7xl mx-auto px-4'>
         <div className='flex items-center justify-between h-16'>
-          <NextLink href='/' className='text-[#1a3152] font-bold text-xl'>
-            PLJ
+          <NextLink href='/' className='text-[#004B87] py-2.5'>
+            <Image
+              src='/logo.png'
+              alt='Peak Life Journey'
+              width={85}
+              height={85}
+              className={`transition-all duration-300 ${
+                hasScrolled || !isHomePage ? "" : "brightness-0 invert"
+              }`}
+              priority
+            />
           </NextLink>
 
           {/* Desktop Navigation */}
@@ -58,7 +96,7 @@ export const Navbar = () => {
                 smooth={true}
                 duration={500}
                 offset={-64}
-                className='text-[#1a3152] hover:text-[#2B4C7E] cursor-pointer capitalize font-medium'>
+                className={`${getTextColor()} ${getHoverColor()} cursor-pointer capitalize font-medium transition-colors duration-300`}>
                 {section}
               </ScrollLink>
             ))}
@@ -66,43 +104,21 @@ export const Navbar = () => {
 
           {/* Desktop Subscribe Button */}
           <div className='hidden md:block'>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button className='bg-primary hover:bg-primary/80 text-[#082757]'>
-                  Subscribe
-                  <ChevronDown className='ml-2 h-4 w-4' />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent
-                align='end'
-                className='w-[200px] bg-white/60 backdrop-blur-sm border border-white/20'>
-                {platforms.map((platform) => (
-                  <DropdownMenuItem
-                    key={platform.name}
-                    className='cursor-pointer'>
-                    <a
-                      href={platform.link}
-                      className='flex items-center gap-3 w-full py-1 text-[#1a3152] font-medium'
-                      target='_blank'
-                      rel='noopener noreferrer'>
-                      {platform.icon}
-                      <span>{platform.name}</span>
-                    </a>
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <SubscribeDropdown 
+              buttonClassName={`${
+                isHomePage && !hasScrolled
+                  ? "bg-white text-[#082757]"
+                  : "bg-primary text-[#082757]"
+              } hover:bg-primary/80 transition-all duration-300`}
+            />
           </div>
 
           {/* Mobile Menu Button */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className='md:hidden'>
-              <Button
-                variant='ghost'
-                size='icon'
-                className='text-[#1a3152] h-10 w-10'>
-                <Menu className='h-12 w-12' />
-              </Button>
+              <button className={`p-2 hover:bg-white/10 rounded-lg transition-colors duration-300 ${getTextColor()}`}>
+                <Menu className='w-7 h-7 sm:w-8 sm:h-8' />
+              </button>
             </SheetTrigger>
             <SheetContent
               side='right'
