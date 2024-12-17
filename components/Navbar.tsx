@@ -80,7 +80,7 @@ export const Navbar = () => {
               alt='Peak Life Journey'
               width={85}
               height={85}
-              className={`transition-all duration-300 ${
+              className={`w-[65px] md:w-[85px] h-auto transition-all duration-300 ${
                 hasScrolled || !isHomePage ? "" : "brightness-0 invert"
               }`}
               priority
