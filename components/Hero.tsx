@@ -27,20 +27,16 @@ export const Hero = () => {
   const { data: latestEpisode } = useQuery<Episode>({
     queryKey: ["episodes", "latest"],
     queryFn: async () => {
-      console.log('[Hero] Fetching episodes for latest episode');
       const episodes = await getEpisodes();
-      console.log('[Hero] Received episodes for latest:', episodes);
       const latest = episodes.sort((a, b) => 
         new Date(b.date).valueOf() - new Date(a.date).valueOf()
       )[0];
-      console.log('[Hero] Selected latest episode:', latest);
       return latest;
     },
   });
 
   const renderLatestEpisode = () => {
     if (!latestEpisode) return null;
-    console.log('[Hero] Rendering latest episode embed code');
     
     return (
       <>
