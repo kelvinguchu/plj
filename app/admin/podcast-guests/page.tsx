@@ -15,6 +15,35 @@ import {
 import { useRouter } from "next/navigation";
 import { checkIsAdmin } from "@/lib/blogService";
 import Image from "next/image";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Pencil, Trash2 } from "lucide-react";
+import { doc, deleteDoc, updateDoc } from "firebase/firestore";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface PodcastGuest {
   id: string;
@@ -23,6 +52,164 @@ interface PodcastGuest {
   createdAt: string;
   profilePicture?: string;
 }
+
+const EditGuestDialog = ({
+  guest,
+  isOpen,
+  onClose,
+  onUpdate,
+}: {
+  guest: PodcastGuest | null;
+  isOpen: boolean;
+  onClose: () => void;
+  onUpdate: (guestId: string, data: Partial<PodcastGuest>) => Promise<void>;
+}) => {
+  const [name, setName] = useState(guest?.name || "");
+  const [email, setEmail] = useState(guest?.email || "");
+  const [imageUrl, setImageUrl] = useState(guest?.profilePicture || "");
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    if (guest) {
+      setName(guest.name);
+      setEmail(guest.email);
+      setImageUrl(guest.profilePicture || "");
+    }
+  }, [guest]);
+
+  const handleImageUpload = async (file: File) => {
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append(
+        "upload_preset",
+        process.env.NEXT_PUBLIC_CLOUDINARY_UPLOAD_PRESET || ""
+      );
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME}/image/upload`,
+        {
+          method: "POST",
+          body: formData,
+        }
+      );
+
+      if (!response.ok) throw new Error("Upload failed");
+
+      const data = await response.json();
+      setImageUrl(data.secure_url);
+      toast({
+        title: "Success",
+        description: "Image uploaded successfully",
+        className: "bg-green-500 text-white",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to upload image",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!guest) return;
+
+    const updatedData: Partial<PodcastGuest> = {
+      name,
+      email,
+      ...(imageUrl && { profilePicture: imageUrl }),
+    };
+
+    await onUpdate(guest.id, updatedData);
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className='sm:max-w-[425px] bg-white'>
+        <DialogHeader>
+          <DialogTitle className='text-[#2B4C7E]'>Edit Guest</DialogTitle>
+          <DialogDescription className='text-[#2B4C7E]/70'>
+            Make changes to the guest profile here.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className='space-y-6 py-4'>
+          <div className='space-y-4'>
+            <div>
+              <label className='block text-[#2B4C7E] text-sm font-medium mb-2'>
+                Profile Picture
+              </label>
+              {imageUrl && (
+                <div className='relative w-20 h-20 mb-4 rounded-full overflow-hidden'>
+                  <Image
+                    src={imageUrl}
+                    alt='Profile'
+                    fill
+                    className='object-cover'
+                    sizes='80px'
+                    unoptimized
+                  />
+                </div>
+              )}
+              <Input
+                type='file'
+                accept='image/*'
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleImageUpload(file);
+                }}
+                className='w-full p-2 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-xl'
+              />
+            </div>
+            <div>
+              <label className='block text-[#2B4C7E] text-sm font-medium mb-2'>
+                Name
+              </label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className='w-full p-2 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-xl'
+                required
+              />
+            </div>
+            <div>
+              <label className='block text-[#2B4C7E] text-sm font-medium mb-2'>
+                Email
+              </label>
+              <Input
+                type='email'
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className='w-full p-2 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-xl'
+                required
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type='button'
+              variant='outline'
+              onClick={onClose}
+              className='border-[#87CEEB]/20 text-[#2B4C7E] hover:bg-[#87CEEB]/5'>
+              Cancel
+            </Button>
+            <Button
+              type='submit'
+              disabled={uploadingImage}
+              className='bg-[#2B4C7E] text-white hover:bg-[#2B4C7E]/90'>
+              {uploadingImage ? "Uploading..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 export default function PodcastGuestManagement() {
   const [name, setName] = useState("");
@@ -37,6 +224,9 @@ export default function PodcastGuestManagement() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const { toast } = useToast();
   const router = useRouter();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [editingGuest, setEditingGuest] = useState<PodcastGuest | null>(null);
+  const GUESTS_PER_PAGE = 5;
 
   useEffect(() => {
     const checkAdmin = async () => {
@@ -172,6 +362,50 @@ export default function PodcastGuestManagement() {
     }
   };
 
+  const handleDeleteGuest = async (guestId: string) => {
+    try {
+      await deleteDoc(doc(db, "podcastGuests", guestId));
+      toast({
+        title: "Success",
+        description: "Guest deleted successfully",
+        className: "bg-green-500 text-white",
+      });
+      fetchGuests();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete guest",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateGuest = async (guestId: string, updatedData: Partial<PodcastGuest>) => {
+    try {
+      await updateDoc(doc(db, "podcastGuests", guestId), updatedData);
+      toast({
+        title: "Success",
+        description: "Guest updated successfully",
+        className: "bg-green-500 text-white",
+      });
+      setEditingGuest(null);
+      fetchGuests();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to update guest",
+        variant: "destructive",
+      });
+    }
+  };
+
+  // Pagination calculations
+  const totalPages = Math.ceil(guests.length / GUESTS_PER_PAGE);
+  const paginatedGuests = guests.slice(
+    (currentPage - 1) * GUESTS_PER_PAGE,
+    currentPage * GUESTS_PER_PAGE
+  );
+
   return (
     <div className='container max-w-5xl mx-auto p-6 pt-20'>
       <div className='flex justify-between items-center mb-8'>
@@ -179,9 +413,9 @@ export default function PodcastGuestManagement() {
           Manage <span className='text-[#2B4C7E]'>Podcast Guests</span>
         </h1>
         <Button
-          onClick={() => router.push("/admin/blog/new")}
+          onClick={() => router.push("/admin")}
           className='bg-[#87CEEB]/10 text-[#2B4C7E] hover:bg-[#87CEEB]/20'>
-          Back to Blog
+          Back to Dashboard
         </Button>
       </div>
 
@@ -283,27 +517,64 @@ export default function PodcastGuestManagement() {
           </h2>
 
           <div className='space-y-4'>
-            {guests.map((guest) => (
+            {paginatedGuests.map((guest) => (
               <div key={guest.id} className='p-4 bg-[#87CEEB]/5 rounded-2xl'>
-                <div className='flex items-center gap-4'>
-                  {guest.profilePicture && (
-                    <div className='relative w-12 h-12 rounded-full overflow-hidden'>
-                      <Image
-                        src={guest.profilePicture}
-                        alt={guest.name}
-                        fill
-                        className='object-cover'
-                        sizes='48px'
-                        unoptimized
-                      />
+                <div className='flex items-center justify-between'>
+                  <div className='flex items-center gap-4'>
+                    {guest.profilePicture && (
+                      <div className='relative w-12 h-12 rounded-full overflow-hidden'>
+                        <Image
+                          src={guest.profilePicture}
+                          alt={guest.name}
+                          fill
+                          className='object-cover'
+                          sizes='48px'
+                          unoptimized
+                        />
+                      </div>
+                    )}
+                    <div>
+                      <h3 className='font-medium text-[#2B4C7E]'>{guest.name}</h3>
+                      <p className='text-[#2B4C7E]/70 text-sm'>{guest.email}</p>
+                      <p className='text-[#2B4C7E]/50 text-xs mt-1'>
+                        Created: {new Date(guest.createdAt).toLocaleDateString()}
+                      </p>
                     </div>
-                  )}
-                  <div>
-                    <h3 className='font-medium text-[#2B4C7E]'>{guest.name}</h3>
-                    <p className='text-[#2B4C7E]/70 text-sm'>{guest.email}</p>
-                    <p className='text-[#2B4C7E]/50 text-xs mt-1'>
-                      Created: {new Date(guest.createdAt).toLocaleDateString()}
-                    </p>
+                  </div>
+                  <div className='flex gap-2'>
+                    <Button
+                      variant='ghost'
+                      size='sm'
+                      onClick={() => setEditingGuest(guest)}
+                      className='text-[#2B4C7E] hover:text-[#2B4C7E]/70'>
+                      <Pencil className='h-4 w-4' />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant='ghost'
+                          size='sm'
+                          className='text-red-500 hover:text-red-700'>
+                          <Trash2 className='h-4 w-4' />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Guest</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete this guest? This action cannot be undone.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => handleDeleteGuest(guest.id)}
+                            className='bg-red-500 hover:bg-red-600'>
+                            Delete
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
                   </div>
                 </div>
               </div>
@@ -314,8 +585,64 @@ export default function PodcastGuestManagement() {
               </p>
             )}
           </div>
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className='mt-6'>
+              <Pagination>
+                <PaginationContent>
+                  {currentPage > 1 && (
+                    <PaginationItem>
+                      <PaginationPrevious
+                        href='#'
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage((prev) => Math.max(prev - 1, 1));
+                        }}
+                      />
+                    </PaginationItem>
+                  )}
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                    (page) => (
+                      <PaginationItem key={page}>
+                        <PaginationLink
+                          href='#'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setCurrentPage(page);
+                          }}
+                          isActive={page === currentPage}>
+                          {page}
+                        </PaginationLink>
+                      </PaginationItem>
+                    )
+                  )}
+                  {currentPage < totalPages && (
+                    <PaginationItem>
+                      <PaginationNext
+                        href='#'
+                        onClick={(e) => {
+                          e.preventDefault();
+                          setCurrentPage((prev) =>
+                            Math.min(prev + 1, totalPages)
+                          );
+                        }}
+                      />
+                    </PaginationItem>
+                  )}
+                </PaginationContent>
+              </Pagination>
+            </div>
+          )}
         </div>
       </div>
+
+      <EditGuestDialog
+        guest={editingGuest}
+        isOpen={!!editingGuest}
+        onClose={() => setEditingGuest(null)}
+        onUpdate={handleUpdateGuest}
+      />
     </div>
   );
 }

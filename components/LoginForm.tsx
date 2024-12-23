@@ -5,6 +5,13 @@ import { app } from "@/lib/firebase";
 import { useToast } from "@/hooks/use-toast";
 import { useRouter } from "next/navigation";
 
+const getTimeBasedGreeting = () => {
+  const hour = new Date().getHours();
+  if (hour < 12) return "Good Morning";
+  if (hour < 17) return "Good Afternoon";
+  return "Good Evening";
+};
+
 export default function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -51,7 +58,9 @@ export default function LoginForm() {
 
   return (
     <div className='w-full max-w-md mx-auto p-6 space-y-6'>
-      <h2 className='text-2xl font-bold text-[#2B4C7E] text-center'>Login</h2>
+      <h2 className='text-2xl font-bold text-[#2B4C7E] text-center'>
+        {getTimeBasedGreeting()}
+      </h2>
       <form onSubmit={handleLogin} className='space-y-4'>
         <div>
           <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
