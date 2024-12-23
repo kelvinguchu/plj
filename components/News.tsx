@@ -14,9 +14,13 @@ import remarkGfm from "remark-gfm";
 
 export const News = () => {
   const [processedPosts, setProcessedPosts] = useState<any[]>([]);
-  
-  // Fetch latest posts with caching
-  const { data: posts = [] } = useQuery({
+
+  // Add loading and error states
+  const {
+    data: posts = [],
+    isLoading,
+    error,
+  } = useQuery({
     queryKey: ["posts"],
     queryFn: getSortedPostsData,
     staleTime: 1000 * 60 * 5, // 5 minutes
@@ -25,32 +29,60 @@ export const News = () => {
 
   // Convert markdown to HTML for preview
   const getContentPreview = async (content: string) => {
+    if (!content) return ""; // Add null check
     const processedContent = await remark()
       .use(html)
       .use(remarkGfm)
       .process(content);
     const contentHtml = processedContent.toString();
-    
+
     // Strip HTML tags and get first 150 characters
-    const strippedContent = contentHtml.replace(/<[^>]*>/g, '');
+    const strippedContent = contentHtml.replace(/<[^>]*>/g, "");
     return strippedContent.substring(0, 150);
   };
 
   // Process posts when they change
   useEffect(() => {
     const processPosts = async () => {
-      const latestPosts = posts.slice(0, 4);
+      if (!posts || posts.length === 0) return;
+
+      console.log("Processing posts:", posts); // Debug log
+
+      const latestPosts = posts
+        .filter((post) => post.status === "published") // Only show published posts
+        .slice(0, 4);
+
       const processed = await Promise.all(
         latestPosts.map(async (post) => ({
           ...post,
-          contentPreview: await getContentPreview(post.content)
+          contentPreview: await getContentPreview(post.content),
         }))
       );
+      console.log("Processed posts:", processed); // Debug log
       setProcessedPosts(processed);
     };
 
     processPosts();
   }, [posts]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className='text-center py-12'>
+        <Loader />
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    console.error("Error fetching posts:", error);
+    return (
+      <div className='text-center py-12 text-red-500'>
+        Error loading posts. Please try again later.
+      </div>
+    );
+  }
 
   return (
     <section className='py-20 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-white to-amber-50'>
@@ -76,7 +108,10 @@ export const News = () => {
         ) : (
           <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12'>
             {processedPosts.map((post) => (
-              <Link href={`/news/${slugify(post.title)}`} key={post.id} className="h-full">
+              <Link
+                href={`/news/${slugify(post.title)}`}
+                key={post.id}
+                className='h-full'>
                 <Card className='group hover:shadow-lg transition-all duration-300 overflow-hidden backdrop-blur-md bg-white/30 border-white/20 h-full flex flex-col'>
                   {post.image && (
                     <div className='aspect-video w-full overflow-hidden bg-amber-100 relative flex-shrink-0'>
@@ -85,7 +120,7 @@ export const News = () => {
                         alt={post.title}
                         fill
                         className='object-cover group-hover:scale-105 transition-transform duration-300'
-                        sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw"
+                        sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 25vw'
                         unoptimized
                       />
                     </div>
@@ -114,7 +149,7 @@ export const News = () => {
                         variant='ghost'
                         className='text-amber-600 hover:text-amber-700 p-0'>
                         Read More
-                        <ArrowRight className="ml-2 h-4 w-4" />
+                        <ArrowRight className='ml-2 h-4 w-4' />
                       </Button>
                     </div>
                   </div>

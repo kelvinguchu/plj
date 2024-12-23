@@ -126,22 +126,33 @@ export async function createPost(post: Omit<BlogPost, "id">): Promise<string> {
   }
 }
 
-export async function getSortedPostsData(): Promise<BlogPost[]> {
+export const getSortedPostsData = async () => {
   try {
     const postsRef = collection(db, "posts");
-    const q = query(postsRef, orderBy("date", "desc"));
-    const querySnapshot = await getDocs(q);
+    const postsQuery = query(postsRef, orderBy("date", "desc"));
+    const postsSnapshot = await getDocs(postsQuery);
 
-    return querySnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-      date: doc.data().date.toDate().toISOString().split("T")[0],
-    })) as BlogPost[];
+    const posts = postsSnapshot.docs.map((doc) => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        title: data.title,
+        content: data.content,
+        date: data.date?.toDate?.()?.toISOString() || new Date().toISOString(),
+        categoryName: data.categoryName || "Uncategorized",
+        image: data.image || null,
+        status: "published", // These should already be published posts
+        authorName: data.authorName || "Peak Life Journey",
+      };
+    });
+
+    console.log("Fetched posts:", posts); // Debug log
+    return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);
-    return [];
+    throw error;
   }
-}
+};
 
 export async function getPostsByCategory(
   categoryId: string

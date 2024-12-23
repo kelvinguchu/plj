@@ -12,12 +12,13 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, ChevronDown } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, Suspense } from "react";
 import Image from "next/image";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SubscribeDropdown } from "@/components/SubscribeDropdown";
 
-export const Navbar = () => {
+// Create a separate component for the navigation content
+const NavigationContent = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
   const router = useRouter();
@@ -196,5 +197,19 @@ export const Navbar = () => {
         </div>
       </div>
     </nav>
+  );
+};
+
+// Main Navbar component with Suspense
+export const Navbar = () => {
+  return (
+    <Suspense
+      fallback={
+        <div className='fixed w-full h-16 top-0 left-0 right-0 z-50 bg-white/30 backdrop-blur-sm'>
+          {/* Simple loading state */}
+        </div>
+      }>
+      <NavigationContent />
+    </Suspense>
   );
 };
