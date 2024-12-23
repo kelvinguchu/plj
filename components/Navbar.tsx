@@ -12,15 +12,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Menu, ChevronDown } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { SubscribeDropdown } from "@/components/SubscribeDropdown";
 
 export const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const isHomePage = pathname === "/";
 
   useEffect(() => {
@@ -31,6 +33,37 @@ export const Navbar = () => {
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  // Handle scroll to section after navigation
+  useEffect(() => {
+    const hash = window.location.hash;
+    if (hash) {
+      const sectionId = hash.replace("#", "");
+      const element = document.getElementById(sectionId);
+      if (element) {
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth" });
+        }, 100);
+      }
+    }
+  }, [pathname, searchParams]);
+
+  const handleNavigation = useCallback(
+    (section: string) => {
+      if (isHomePage) {
+        // If we're on homepage, just scroll
+        const element = document.getElementById(section);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth" });
+        }
+      } else {
+        // If we're on another page, navigate to homepage with hash
+        router.push(`/#${section}`);
+      }
+      setIsOpen(false);
+    },
+    [isHomePage, router]
+  );
 
   const platforms = [
     {
@@ -52,10 +85,6 @@ export const Navbar = () => {
 
   const navLinks = ["episodes", "news", "about", "guests", "contact"];
 
-  const handleLinkClick = () => {
-    setIsOpen(false);
-  };
-
   const getTextColor = () => {
     if (isHomePage && !hasScrolled) {
       return "text-white";
@@ -70,10 +99,18 @@ export const Navbar = () => {
     return "hover:text-[#2B4C7E]";
   };
 
+  // Add back handleLinkClick for platform links
+  const handleLinkClick = () => {
+    setIsOpen(false);
+  };
+
   return (
-    <nav className={`fixed max-w-[100vw] top-0 left-0 right-0 z-50 ${
-      hasScrolled ? 'backdrop-blur-sm bg-white/30 border-b border-white/20' : ''
-    }`}>
+    <nav
+      className={`fixed max-w-[100vw] top-0 left-0 right-0 z-50 ${
+        hasScrolled
+          ? "backdrop-blur-sm bg-white/30 border-b border-white/20"
+          : ""
+      }`}>
       <div className='max-w-7xl mx-auto px-4'>
         <div className='flex items-center justify-between h-16'>
           <NextLink href='/' className='text-[#004B87] py-2.5'>
@@ -92,21 +129,18 @@ export const Navbar = () => {
           {/* Desktop Navigation */}
           <div className='hidden md:flex space-x-8'>
             {navLinks.map((section) => (
-              <ScrollLink
+              <button
                 key={section}
-                to={section}
-                smooth={true}
-                duration={500}
-                offset={-64}
+                onClick={() => handleNavigation(section)}
                 className={`${getTextColor()} ${getHoverColor()} cursor-pointer capitalize font-medium transition-colors duration-300`}>
                 {section}
-              </ScrollLink>
+              </button>
             ))}
           </div>
 
           {/* Desktop Subscribe Button */}
           <div className='hidden md:block'>
-            <SubscribeDropdown 
+            <SubscribeDropdown
               buttonClassName={`${
                 isHomePage && !hasScrolled
                   ? "bg-white text-[#082757]"
@@ -118,7 +152,8 @@ export const Navbar = () => {
           {/* Mobile Menu Button */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className='md:hidden'>
-              <button className={`p-2 hover:bg-white/10 rounded-lg transition-colors duration-300 ${getTextColor()}`}>
+              <button
+                className={`p-2 hover:bg-white/10 rounded-lg transition-colors duration-300 ${getTextColor()}`}>
                 <Menu className='w-7 h-7 sm:w-8 sm:h-8' />
               </button>
             </SheetTrigger>
@@ -127,16 +162,12 @@ export const Navbar = () => {
               className='w-[300px] bg-white/95 backdrop-blur-md'>
               <div className='flex flex-col space-y-6 mt-6'>
                 {navLinks.map((section) => (
-                  <ScrollLink
+                  <button
                     key={section}
-                    to={section}
-                    smooth={true}
-                    duration={500}
-                    offset={-64}
-                    className='text-[#1a3152] hover:text-[#2B4C7E] cursor-pointer capitalize font-medium text-lg'
-                    onClick={handleLinkClick}>
+                    onClick={() => handleNavigation(section)}
+                    className='text-[#1a3152] hover:text-[#2B4C7E] cursor-pointer capitalize font-medium text-lg text-left'>
                     {section}
-                  </ScrollLink>
+                  </button>
                 ))}
 
                 {/* Mobile Subscribe Section */}
