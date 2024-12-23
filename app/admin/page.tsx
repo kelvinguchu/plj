@@ -61,6 +61,8 @@ export default function AdminDashboard() {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 5;
   const router = useRouter();
+  const [isEpisodeManagementOpen, setIsEpisodeManagementOpen] = useState(false);
+  const [episodes, setEpisodes] = useState<any[]>([]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -132,6 +134,19 @@ export default function AdminDashboard() {
         } as PodcastGuest;
       });
       setGuests(guestsData);
+
+      // Fetch episodes
+      const episodesRef = collection(db, "episodes");
+      const episodesQuery = query(episodesRef, orderBy("date", "desc"));
+      const episodesSnapshot = await getDocs(episodesQuery);
+      const episodesData = episodesSnapshot.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data(),
+        date:
+          doc.data().date?.toDate?.()?.toISOString() ||
+          new Date().toISOString(),
+      }));
+      setEpisodes(episodesData);
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -191,7 +206,28 @@ export default function AdminDashboard() {
           </Button>
           <ReviewSheet />
           <BlogManagementSheet />
-          <EpisodeManagementSheet />
+          <Button
+            onClick={() => setIsEpisodeManagementOpen(true)}
+            className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              className='h-6 w-6 text-[#2B4C7E]'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='currentColor'>
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth={2}
+                d='M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z'
+              />
+            </svg>
+          </Button>
+          <EpisodeManagementSheet
+            episodes={episodes}
+            isOpen={isEpisodeManagementOpen}
+            onClose={() => setIsEpisodeManagementOpen(false)}
+          />
         </div>
       </div>
 
