@@ -380,7 +380,10 @@ export default function PodcastGuestManagement() {
     }
   };
 
-  const handleUpdateGuest = async (guestId: string, updatedData: Partial<PodcastGuest>) => {
+  const handleUpdateGuest = async (
+    guestId: string,
+    updatedData: Partial<PodcastGuest>
+  ) => {
     try {
       await updateDoc(doc(db, "podcastGuests", guestId), updatedData);
       toast({
@@ -534,10 +537,13 @@ export default function PodcastGuestManagement() {
                       </div>
                     )}
                     <div>
-                      <h3 className='font-medium text-[#2B4C7E]'>{guest.name}</h3>
+                      <h3 className='font-medium text-[#2B4C7E]'>
+                        {guest.name}
+                      </h3>
                       <p className='text-[#2B4C7E]/70 text-sm'>{guest.email}</p>
                       <p className='text-[#2B4C7E]/50 text-xs mt-1'>
-                        Created: {new Date(guest.createdAt).toLocaleDateString()}
+                        Created:{" "}
+                        {new Date(guest.createdAt).toLocaleDateString()}
                       </p>
                     </div>
                   </div>
@@ -562,7 +568,8 @@ export default function PodcastGuestManagement() {
                         <AlertDialogHeader>
                           <AlertDialogTitle>Delete Guest</AlertDialogTitle>
                           <AlertDialogDescription>
-                            Are you sure you want to delete this guest? This action cannot be undone.
+                            Are you sure you want to delete this guest? This
+                            action cannot be undone.
                           </AlertDialogDescription>
                         </AlertDialogHeader>
                         <AlertDialogFooter>

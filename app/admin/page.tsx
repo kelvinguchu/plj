@@ -147,9 +147,10 @@ export default function AdminDashboard() {
           new Date().toISOString(),
       }));
       setEpisodes(episodesData);
+
+      setLoading(false);
     } catch (error) {
       console.error("Error fetching data:", error);
-    } finally {
       setLoading(false);
     }
   };
@@ -173,6 +174,9 @@ export default function AdminDashboard() {
   };
 
   const totalPages = (items: any[]) => Math.ceil(items.length / postsPerPage);
+
+  // Calculate total content
+  const totalContent = posts.length + episodes.length;
 
   if (loading) {
     return (
@@ -266,12 +270,10 @@ export default function AdminDashboard() {
         <Card>
           <CardHeader>
             <CardTitle className='text-[#2B4C7E]'>Total Content</CardTitle>
-            <CardDescription>All posts and episodes</CardDescription>
+            <CardDescription>Posts and episodes combined</CardDescription>
           </CardHeader>
           <CardContent>
-            <p className='text-4xl font-light text-[#2B4C7E]'>
-              {posts.length + pendingPosts.length}
-            </p>
+            <p className='text-4xl font-light text-[#2B4C7E]'>{totalContent}</p>
           </CardContent>
         </Card>
       </div>
