@@ -57,7 +57,17 @@ interface Episode {
   guestName?: string;
 }
 
-export default function EpisodeManagementSheet() {
+interface EpisodeManagementSheetProps {
+  episodes: Episode[];
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+export default function EpisodeManagementSheet({
+  episodes: propEpisodes,
+  isOpen,
+  onClose,
+}: EpisodeManagementSheetProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
@@ -65,7 +75,7 @@ export default function EpisodeManagementSheet() {
   const queryClient = useQueryClient();
 
   const {
-    data: episodes = [],
+    data: episodes = propEpisodes,
     isLoading,
     refetch,
   } = useQuery({
@@ -82,6 +92,7 @@ export default function EpisodeManagementSheet() {
           new Date().toISOString(),
       })) as Episode[];
     },
+    initialData: propEpisodes,
   });
 
   const filteredEpisodes = episodes.filter(
@@ -121,7 +132,7 @@ export default function EpisodeManagementSheet() {
   );
 
   return (
-    <Sheet>
+    <Sheet open={isOpen} onOpenChange={onClose}>
       <SheetTrigger className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'>
         <svg
           xmlns='http://www.w3.org/2000/svg'
