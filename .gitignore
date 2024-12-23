@@ -35,3 +35,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# firebase
+peaklifejourney-9c2d8-firebase-adminsdk-guie2-afb16edba0.json

@@ -1,6 +1,12 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { createPost, getCategories, addCategory } from "@/lib/blogService";
+import {
+  createPost,
+  getCategories,
+  addCategory,
+  getPodcastGuests,
+  checkIsAdmin,
+} from "@/lib/blogService";
 import type { Category } from "@/lib/blogService";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -44,6 +50,10 @@ import { useToast } from "@/hooks/use-toast";
 import { ToastAction } from "@/components/ui/toast";
 import BlogManagementSheet from "@/components/BlogManagementSheet";
 import { slugify } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
+import LoginForm from "@/components/LoginForm";
+import ReviewSheet from "@/components/ReviewSheet";
+import { Button } from "@/components/ui/button";
 
 const MDEditor = dynamic(
   () => import("@uiw/react-md-editor").then((mod) => mod.default),
@@ -169,6 +179,12 @@ export default function NewBlogPost() {
   const { toast } = useToast();
   const [isAddingCategory, setIsAddingCategory] = useState(false);
 
+  const { data: podcastGuests = [], isLoading: isLoadingGuests } = useQuery({
+    queryKey: ["podcastGuests"],
+    queryFn: getPodcastGuests,
+    enabled: isAuthenticated,
+  });
+
   useEffect(() => {
     const auth = getAuth(app);
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -214,48 +230,40 @@ export default function NewBlogPost() {
     setLoading(true);
 
     try {
-      const contentHtml = await processContent(content);
-      const selectedCategoryData = categories.find(cat => cat.id === selectedCategory);
+      // Process the markdown content to HTML
+      const processedContent = await remark()
+        .use(html)
+        .use(remarkGfm)
+        .process(content);
+      const contentHtml = processedContent.toString();
 
-      const postData = {
+      // Create the post with Peak Life Journey as author
+      await createPost({
         title,
         content,
         contentHtml,
+        authorId: "admin",
+        authorName: "Peak Life Journey",
         date: new Date().toISOString(),
+        image: imageUrl,
         categoryId: selectedCategory,
-        categoryName: selectedCategoryData?.name || "Uncategorized",
-        ...(imageUrl && { image: imageUrl }),
-      };
-
-      await createPost(postData);
+        categoryName:
+          categories.find((c) => c.id === selectedCategory)?.name || "",
+      });
 
       toast({
         title: "Success",
-        description: "Blog post published successfully!",
-        className: `bg-green-500 text-white`,
-        action: (
-          <ToastAction
-            altText='View post'
-            className='text-white hover:text-green-100'>
-            View post
-          </ToastAction>
-        ),
+        description: "Post created successfully",
+        className: "bg-green-500 text-white",
       });
 
-      router.push(`/news/${slugify(title)}`);
+      router.push("/admin");
     } catch (error) {
       console.error("Error creating post:", error);
       toast({
         title: "Error",
-        description: "Failed to publish post. Please try again.",
-        className: `bg-red-500 text-white`,
-        action: (
-          <ToastAction
-            altText='Try again'
-            className='text-white hover:text-red-100'>
-            Try again
-          </ToastAction>
-        ),
+        description: "Failed to create post",
+        variant: "destructive",
       });
     } finally {
       setLoading(false);
@@ -406,375 +414,301 @@ export default function NewBlogPost() {
     return "Good Evening";
   };
 
-  if (!isAuthenticated) {
-    return (
-      <div className='min-h-screen mt-10 flex items-center justify-center bg-gradient-to-br from-[#87CEEB]/20 to-white p-4'>
-        <div className='w-full max-w-md'>
-          <div className='bg-white rounded-3xl shadow-xl p-8 border border-[#87CEEB]/20'>
-            <div className='text-center mb-8'>
-              <h1 className='text-4xl font-light mb-2'>
-                {getTimeBasedGreeting()}{" "}
-                <span className='text-[#2B4C7E]'>Admin</span>
-              </h1>
-              <p className='text-[#2B4C7E]/70'>
-                Sign in to manage your blog posts
-              </p>
-            </div>
-
-            {authError && (
-              <div className='mb-6 p-4 bg-red-50 rounded-2xl border border-red-100'>
-                <p className='text-red-600 text-sm'>{authError}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleLogin} className='space-y-5'>
-              <div>
-                <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                  Email Address
-                </label>
-                <input
-                  type='email'
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
-                  placeholder='Enter your email'
-                  required
-                  disabled={isLoggingIn}
-                />
-              </div>
-              <div>
-                <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                  Password
-                </label>
-                <input
-                  type='password'
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
-                  placeholder='Enter your password'
-                  required
-                  disabled={isLoggingIn}
-                />
-              </div>
-              <button
-                type='submit'
-                disabled={isLoggingIn}
-                className='w-full bg-[#2B4C7E] text-white p-4 rounded-2xl hover:bg-[#2B4C7E]/90 transition duration-200 font-medium disabled:opacity-50 disabled:cursor-not-allowed mt-6'>
-                {isLoggingIn ? (
-                  <div className='flex items-center justify-center'>
-                    <svg
-                      className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
-                      xmlns='http://www.w3.org/2000/svg'
-                      fill='none'
-                      viewBox='0 0 24 24'>
-                      <circle
-                        className='opacity-25'
-                        cx='12'
-                        cy='12'
-                        r='10'
-                        stroke='currentColor'
-                        strokeWidth='4'></circle>
-                      <path
-                        className='opacity-75'
-                        fill='currentColor'
-                        d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                    </svg>
-                    Signing In...
-                  </div>
-                ) : (
-                  "Sign In"
-                )}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div className='min-h-screen pt-20 bg-gradient-to-br from-[#87CEEB]/20 to-white py-8 px-4'>
-      <div className='max-w-6xl mx-auto'>
-        <div className='bg-white rounded-3xl shadow-xl border border-[#87CEEB]/20 p-8'>
-          <div className='flex justify-between items-center mb-12'>
-            <div>
-              <h1 className='text-4xl font-light mb-2'>
-                Create New <span className='text-[#2B4C7E]'>Blog Post</span>
-              </h1>
-              <p className='text-[#2B4C7E]/70'>
-                Share your thoughts with the world
-              </p>
-            </div>
-            <div className='flex items-center gap-4'>
-              <BlogManagementSheet />
-              <button
-                onClick={handleLogout}
-                className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'
-                title='Logout'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  className='h-6 w-6 text-[#2B4C7E]'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'
-                  />
-                </svg>
-              </button>
-              <button
-                onClick={() => router.push("/blog")}
-                className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'
-                title='Back to Blog'>
-                <svg
-                  xmlns='http://www.w3.org/2000/svg'
-                  className='h-6 w-6 text-[#2B4C7E]'
-                  fill='none'
-                  viewBox='0 0 24 24'
-                  stroke='currentColor'>
-                  <path
-                    strokeLinecap='round'
-                    strokeLinejoin='round'
-                    strokeWidth={2}
-                    d='M6 18L18 6M6 6l12 12'
-                  />
-                </svg>
-              </button>
-            </div>
-          </div>
-
-          <form onSubmit={handleSubmit} className='space-y-8'>
-            <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
-              <div className='space-y-5'>
+    <div className='container max-w-5xl mx-auto p-6'>
+      {!isAuthenticated ? (
+        <LoginForm />
+      ) : (
+        <div className='min-h-screen pt-20  py-8 px-4'>
+          <div className='max-w-6xl mx-auto'>
+            <div className='bg-white rounded-3xl shadow-xl border border-[#87CEEB]/20 p-8'>
+              <div className='flex justify-between items-center mb-12'>
                 <div>
-                  <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                    Post Title
-                  </label>
-                  <input
-                    type='text'
-                    value={title}
-                    onChange={(e) => setTitle(e.target.value)}
-                    className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
-                    placeholder='Enter post title'
-                    required
-                  />
+                  <h1 className='text-4xl font-light mb-2'>
+                    Create New <span className='text-[#2B4C7E]'>Blog Post</span>
+                  </h1>
+                  <p className='text-[#2B4C7E]/70'>
+                    Share your thoughts with the world
+                  </p>
                 </div>
+                <div className='flex items-center gap-4'>
+                  <ReviewSheet />
+                  <BlogManagementSheet />
+                  <Button
+                    onClick={() => router.push("/admin/podcast-guests")}
+                    className='bg-[#87CEEB]/10 text-[#2B4C7E] hover:bg-[#87CEEB]/20'>
+                    Manage Guests
+                  </Button>
+                  <button
+                    onClick={handleLogout}
+                    className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'
+                    title='Logout'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      className='h-6 w-6 text-[#2B4C7E]'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                      stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1'
+                      />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => router.push("/blog")}
+                    className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'
+                    title='Back to Blog'>
+                    <svg
+                      xmlns='http://www.w3.org/2000/svg'
+                      className='h-6 w-6 text-[#2B4C7E]'
+                      fill='none'
+                      viewBox='0 0 24 24'
+                      stroke='currentColor'>
+                      <path
+                        strokeLinecap='round'
+                        strokeLinejoin='round'
+                        strokeWidth={2}
+                        d='M6 18L18 6M6 6l12 12'
+                      />
+                    </svg>
+                  </button>
+                </div>
+              </div>
 
-                <div>
-                  <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                    Category
-                  </label>
-                  <div className='flex gap-3'>
-                    <div className='relative flex-1'>
-                      <CustomSelect
-                        categories={categories}
-                        selectedCategory={selectedCategory}
-                        onSelect={setSelectedCategory}
-                        onDelete={handleDeleteCategory}
+              <form onSubmit={handleSubmit} className='space-y-8'>
+                <div className='grid grid-cols-1 md:grid-cols-2 gap-8'>
+                  <div className='space-y-5'>
+                    <div>
+                      <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
+                        Post Title
+                      </label>
+                      <input
+                        type='text'
+                        value={title}
+                        onChange={(e) => setTitle(e.target.value)}
+                        className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
+                        placeholder='Enter post title'
+                        required
                       />
                     </div>
-                    <button
-                      type='button'
-                      onClick={() => setShowAddCategory(true)}
-                      className='px-6 py-4 bg-[#87CEEB]/10 rounded-2xl hover:bg-[#87CEEB]/20 transition duration-200'>
-                      <svg
-                        xmlns='http://www.w3.org/2000/svg'
-                        className='h-5 w-5 text-[#2B4C7E]'
-                        fill='none'
-                        viewBox='0 0 24 24'
-                        stroke='currentColor'>
-                        <path
-                          strokeLinecap='round'
-                          strokeLinejoin='round'
-                          strokeWidth={2}
-                          d='M12 4v16m8-8H4'
+
+                    <div>
+                      <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
+                        Category
+                      </label>
+                      <div className='flex gap-3'>
+                        <div className='relative flex-1'>
+                          <CustomSelect
+                            categories={categories}
+                            selectedCategory={selectedCategory}
+                            onSelect={setSelectedCategory}
+                            onDelete={handleDeleteCategory}
+                          />
+                        </div>
+                        <button
+                          type='button'
+                          onClick={() => setShowAddCategory(true)}
+                          className='px-6 py-4 bg-[#87CEEB]/10 rounded-2xl hover:bg-[#87CEEB]/20 transition duration-200'>
+                          <svg
+                            xmlns='http://www.w3.org/2000/svg'
+                            className='h-5 w-5 text-[#2B4C7E]'
+                            fill='none'
+                            viewBox='0 0 24 24'
+                            stroke='currentColor'>
+                            <path
+                              strokeLinecap='round'
+                              strokeLinejoin='round'
+                              strokeWidth={2}
+                              d='M12 4v16m8-8H4'
+                            />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
+                      Featured Image
+                    </label>
+                    <div className='relative'>
+                      <input
+                        type='file'
+                        accept='image/*'
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            setImageFile(file);
+                            handleImageUpload(file);
+                          }
+                        }}
+                        className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
+                      />
+                      {uploadingImage && (
+                        <div className='absolute right-4 top-1/2 -translate-y-1/2 flex items-center'>
+                          <svg
+                            className='animate-spin h-5 w-5 text-[#2B4C7E]'
+                            xmlns='http://www.w3.org/2000/svg'
+                            fill='none'
+                            viewBox='0 0 24 24'>
+                            <circle
+                              className='opacity-25'
+                              cx='12'
+                              cy='12'
+                              r='10'
+                              stroke='currentColor'
+                              strokeWidth='4'></circle>
+                            <path
+                              className='opacity-75'
+                              fill='currentColor'
+                              d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+                          </svg>
+                        </div>
+                      )}
+                    </div>
+                    {imageUrl && (
+                      <div className='mt-4 relative w-full h-48 rounded-2xl overflow-hidden'>
+                        <Image
+                          src={imageUrl}
+                          alt='Preview'
+                          fill
+                          className='object-cover'
+                          sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
+                          unoptimized
                         />
-                      </svg>
-                    </button>
+                      </div>
+                    )}
+                    {uploadError && (
+                      <div className='mt-4 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100'>
+                        <p className='text-sm'>
+                          Failed to upload image: {uploadError}
+                        </p>
+                        <button
+                          onClick={() => setUploadError(null)}
+                          className='text-sm underline mt-2'>
+                          Dismiss
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-              </div>
 
-              <div>
-                <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                  Featured Image
-                </label>
-                <div className='relative'>
-                  <input
-                    type='file'
-                    accept='image/*'
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        setImageFile(file);
-                        handleImageUpload(file);
-                      }
-                    }}
-                    className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200'
-                  />
-                  {uploadingImage && (
-                    <div className='absolute right-4 top-1/2 -translate-y-1/2 flex items-center'>
-                      <svg
-                        className='animate-spin h-5 w-5 text-[#2B4C7E]'
-                        xmlns='http://www.w3.org/2000/svg'
-                        fill='none'
-                        viewBox='0 0 24 24'>
-                        <circle
-                          className='opacity-25'
-                          cx='12'
-                          cy='12'
-                          r='10'
-                          stroke='currentColor'
-                          strokeWidth='4'></circle>
-                        <path
-                          className='opacity-75'
-                          fill='currentColor'
-                          d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                      </svg>
-                    </div>
-                  )}
-                </div>
-                {imageUrl && (
-                  <div className='mt-4 relative w-full h-48 rounded-2xl overflow-hidden'>
-                    <Image
-                      src={imageUrl}
-                      alt='Preview'
-                      fill
-                      className='object-cover'
-                      sizes='(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw'
-                      unoptimized
+                <div>
+                  <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
+                    Content
+                  </label>
+                  <div
+                    data-color-mode='light'
+                    className='rounded-2xl overflow-hidden border border-[#87CEEB]/20'>
+                    <MDEditor
+                      value={content}
+                      onChange={(val) => setContent(val || "")}
+                      height={500}
+                      preview='live'
+                      hideToolbar={false}
+                      enableScroll={true}
+                      highlightEnable={true}
+                      textareaProps={{
+                        placeholder: "Write your blog post here...",
+                      }}
+                      className='!border-0'
                     />
                   </div>
-                )}
-                {uploadError && (
-                  <div className='mt-4 p-4 bg-red-50 text-red-600 rounded-2xl border border-red-100'>
-                    <p className='text-sm'>
-                      Failed to upload image: {uploadError}
-                    </p>
-                    <button
-                      onClick={() => setUploadError(null)}
-                      className='text-sm underline mt-2'>
-                      Dismiss
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
+                </div>
 
-            <div>
-              <label className='block text-[#2B4C7E] text-sm font-medium mb-3'>
-                Content
-              </label>
-              <div
-                data-color-mode='light'
-                className='rounded-2xl overflow-hidden border border-[#87CEEB]/20'>
-                <MDEditor
-                  value={content}
-                  onChange={(val) => setContent(val || "")}
-                  height={500}
-                  preview='live'
-                  hideToolbar={false}
-                  enableScroll={true}
-                  highlightEnable={true}
-                  textareaProps={{
-                    placeholder: "Write your blog post here...",
-                  }}
-                  className='!border-0'
-                />
-              </div>
-            </div>
-
-            <div className='flex justify-end pt-6'>
-              <button
-                type='submit'
-                disabled={loading}
-                className='inline-flex items-center px-8 py-4 bg-[#2B4C7E] text-white rounded-2xl hover:bg-[#2B4C7E]/90 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium'>
-                {loading ? (
-                  <>
-                    <svg
-                      className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
-                      xmlns='http://www.w3.org/2000/svg'
-                      fill='none'
-                      viewBox='0 0 24 24'>
-                      <circle
-                        className='opacity-25'
-                        cx='12'
-                        cy='12'
-                        r='10'
-                        stroke='currentColor'
-                        strokeWidth='4'></circle>
-                      <path
-                        className='opacity-75'
-                        fill='currentColor'
-                        d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                    </svg>
-                    Publishing...
-                  </>
-                ) : (
-                  "Publish Post"
-                )}
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-
-      {showAddCategory && (
-        <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4'>
-          <div className='bg-white rounded-3xl p-8 w-full max-w-md'>
-            <h3 className='text-2xl font-light mb-6'>
-              Add New <span className='text-[#2B4C7E]'>Category</span>
-            </h3>
-            <input
-              type='text'
-              value={newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200 mb-6'
-              placeholder='Category name'
-            />
-            <div className='flex justify-end gap-3'>
-              <button
-                type='button'
-                onClick={() => setShowAddCategory(false)}
-                className='px-6 py-3 text-[#2B4C7E] bg-[#87CEEB]/10 rounded-2xl hover:bg-[#87CEEB]/20 transition duration-200'
-                disabled={isAddingCategory}>
-                Cancel
-              </button>
-              <button
-                type='button'
-                onClick={handleAddCategory}
-                disabled={isAddingCategory}
-                className='px-6 py-3 bg-[#2B4C7E] text-white rounded-2xl hover:bg-[#2B4C7E]/90 transition duration-200 disabled:opacity-50 flex items-center gap-2'>
-                {isAddingCategory ? (
-                  <>
-                    <svg
-                      className='animate-spin h-5 w-5 text-white'
-                      xmlns='http://www.w3.org/2000/svg'
-                      fill='none'
-                      viewBox='0 0 24 24'>
-                      <circle
-                        className='opacity-25'
-                        cx='12'
-                        cy='12'
-                        r='10'
-                        stroke='currentColor'
-                        strokeWidth='4'></circle>
-                      <path
-                        className='opacity-75'
-                        fill='currentColor'
-                        d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
-                    </svg>
-                    Adding...
-                  </>
-                ) : (
-                  "Add Category"
-                )}
-              </button>
+                <div className='flex justify-end pt-6'>
+                  <button
+                    type='submit'
+                    disabled={loading}
+                    className='inline-flex items-center px-8 py-4 bg-[#2B4C7E] text-white rounded-2xl hover:bg-[#2B4C7E]/90 transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed font-medium'>
+                    {loading ? (
+                      <>
+                        <svg
+                          className='animate-spin -ml-1 mr-3 h-5 w-5 text-white'
+                          xmlns='http://www.w3.org/2000/svg'
+                          fill='none'
+                          viewBox='0 0 24 24'>
+                          <circle
+                            className='opacity-25'
+                            cx='12'
+                            cy='12'
+                            r='10'
+                            stroke='currentColor'
+                            strokeWidth='4'></circle>
+                          <path
+                            className='opacity-75'
+                            fill='currentColor'
+                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+                        </svg>
+                        Publishing...
+                      </>
+                    ) : (
+                      "Publish Post"
+                    )}
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
+
+          {showAddCategory && (
+            <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 px-4'>
+              <div className='bg-white rounded-3xl p-8 w-full max-w-md'>
+                <h3 className='text-2xl font-light mb-6'>
+                  Add New <span className='text-[#2B4C7E]'>Category</span>
+                </h3>
+                <input
+                  type='text'
+                  value={newCategory}
+                  onChange={(e) => setNewCategory(e.target.value)}
+                  className='w-full p-4 bg-[#87CEEB]/5 border border-[#87CEEB]/20 rounded-2xl focus:ring-2 focus:ring-[#2B4C7E] focus:border-transparent transition duration-200 mb-6'
+                  placeholder='Category name'
+                />
+                <div className='flex justify-end gap-3'>
+                  <button
+                    type='button'
+                    onClick={() => setShowAddCategory(false)}
+                    className='px-6 py-3 text-[#2B4C7E] bg-[#87CEEB]/10 rounded-2xl hover:bg-[#87CEEB]/20 transition duration-200'
+                    disabled={isAddingCategory}>
+                    Cancel
+                  </button>
+                  <button
+                    type='button'
+                    onClick={handleAddCategory}
+                    disabled={isAddingCategory}
+                    className='px-6 py-3 bg-[#2B4C7E] text-white rounded-2xl hover:bg-[#2B4C7E]/90 transition duration-200 disabled:opacity-50 flex items-center gap-2'>
+                    {isAddingCategory ? (
+                      <>
+                        <svg
+                          className='animate-spin h-5 w-5 text-white'
+                          xmlns='http://www.w3.org/2000/svg'
+                          fill='none'
+                          viewBox='0 0 24 24'>
+                          <circle
+                            className='opacity-25'
+                            cx='12'
+                            cy='12'
+                            r='10'
+                            stroke='currentColor'
+                            strokeWidth='4'></circle>
+                          <path
+                            className='opacity-75'
+                            fill='currentColor'
+                            d='M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z'></path>
+                        </svg>
+                        Adding...
+                      </>
+                    ) : (
+                      "Add Category"
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -25,9 +25,17 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import localFont from "next/font/local";
 import { Loader } from "@/components/ui/loader";
 import { slugify } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 const POSTS_PER_PAGE = 10;
 
@@ -40,11 +48,11 @@ interface Post {
   image?: string;
   categoryId?: string;
   categoryName?: string;
+  authorName?: string;
 }
 
 export default function BlogManagementSheet() {
-  const [lastPost, setLastPost] = useState<any>(null);
-  const [hasMore, setHasMore] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
   const [searchQuery, setSearchQuery] = useState("");
   const router = useRouter();
   const { toast } = useToast();
@@ -55,29 +63,27 @@ export default function BlogManagementSheet() {
     isLoading,
     refetch,
   } = useQuery({
-    queryKey: ["managePosts", lastPost],
-    queryFn: () => getPaginatedPosts(lastPost, POSTS_PER_PAGE),
+    queryKey: ["managePosts", currentPage],
+    queryFn: async () => {
+      const result = await getPaginatedPosts(null, POSTS_PER_PAGE);
+      return result;
+    },
+    refetchOnWindowFocus: false,
+    refetchOnMount: true,
+    staleTime: 1000 * 60, // 1 minute
   });
 
   const filteredPosts = posts.filter(
     (post) =>
       post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      post.categoryName?.toLowerCase().includes(searchQuery.toLowerCase())
+      post.categoryName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      post.authorName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const loadMore = async () => {
-    if (posts.length > 0) {
-      const lastVisible = posts[posts.length - 1];
-      setLastPost(lastVisible);
-      const nextPosts = await getPaginatedPosts(lastVisible, POSTS_PER_PAGE);
-      setHasMore(nextPosts.length === POSTS_PER_PAGE);
-    }
-  };
 
   const handleDelete = async (id: string) => {
     try {
       await deletePost(id);
-      await queryClient.invalidateQueries({ queryKey: ["managePosts"] });
+      await refetch(); // Refetch after deletion
       await queryClient.invalidateQueries({ queryKey: ["posts"] });
 
       toast({
@@ -99,8 +105,14 @@ export default function BlogManagementSheet() {
     router.push(`/admin/blog/edit/${slug}`);
   };
 
+  const totalPages = Math.ceil(filteredPosts.length / POSTS_PER_PAGE);
+  const paginatedPosts = filteredPosts.slice(
+    (currentPage - 1) * POSTS_PER_PAGE,
+    currentPage * POSTS_PER_PAGE
+  );
+
   return (
-    <Sheet>
+    <Sheet onOpenChange={() => refetch()}>
       <SheetTrigger className='p-2 hover:bg-[#87CEEB]/10 rounded-xl transition duration-200'>
         <svg
           xmlns='http://www.w3.org/2000/svg'
@@ -116,8 +128,7 @@ export default function BlogManagementSheet() {
           />
         </svg>
       </SheetTrigger>
-      <SheetContent
-        className={`min-w-[40vw] sm:w-[90vw] overflow-y-auto bg-white border-l border-[#87CEEB]/20`}>
+      <SheetContent className='min-w-[40vw] sm:w-[90vw] overflow-y-auto bg-white border-l border-[#87CEEB]/20'>
         <SheetHeader>
           <SheetTitle className='text-[#2B4C7E]'>Manage Blog Posts</SheetTitle>
           <SheetDescription className='text-[#2B4C7E]/70'>
@@ -128,7 +139,7 @@ export default function BlogManagementSheet() {
         <div className='mt-6'>
           <Input
             type='search'
-            placeholder='Search posts by title or category...'
+            placeholder='Search posts by title, category, or author...'
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className='w-full rounded-2xl bg-[#87CEEB]/5 border-[#87CEEB]/20 placeholder:text-[#2B4C7E]/40 focus:border-[#2B4C7E] focus:ring-[#2B4C7E]'
@@ -140,13 +151,13 @@ export default function BlogManagementSheet() {
             <div className='py-8'>
               <Loader />
             </div>
-          ) : filteredPosts.length === 0 ? (
+          ) : paginatedPosts.length === 0 ? (
             <div className='text-center py-8 text-[#2B4C7E]/70'>
               {searchQuery ? "No matching posts found" : "No posts found"}
             </div>
           ) : (
             <>
-              {filteredPosts.map((post) => (
+              {paginatedPosts.map((post) => (
                 <div
                   key={post.id}
                   className='flex items-start space-x-4 p-4 rounded-2xl border border-[#87CEEB]/20 hover:bg-[#87CEEB]/5 transition-colors duration-200'>
@@ -166,7 +177,10 @@ export default function BlogManagementSheet() {
                     <h4 className='text-sm font-medium text-[#2B4C7E] truncate'>
                       {post.title}
                     </h4>
-                    <p className='text-sm text-[#2B4C7E]/70'>{post.date}</p>
+                    <p className='text-sm text-[#2B4C7E]/70'>
+                      By {post.authorName || "Peak Life Journey"} •{" "}
+                      {new Date(post.date).toLocaleDateString()}
+                    </p>
                     {post.categoryName && (
                       <span className='inline-block mt-1 text-xs bg-[#87CEEB]/10 text-[#2B4C7E] px-2 py-1 rounded-full'>
                         {post.categoryName}
@@ -236,12 +250,50 @@ export default function BlogManagementSheet() {
                 </div>
               ))}
 
-              {!searchQuery && hasMore && posts.length === POSTS_PER_PAGE && (
-                <button
-                  onClick={loadMore}
-                  className='w-full py-2 text-[#2B4C7E]/70 hover:text-[#2B4C7E] text-sm transition-colors duration-200'>
-                  Load more posts...
-                </button>
+              {totalPages > 1 && (
+                <Pagination className='mt-6'>
+                  <PaginationContent>
+                    {currentPage > 1 && (
+                      <PaginationItem>
+                        <PaginationPrevious
+                          href='#'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setCurrentPage((prev) => Math.max(prev - 1, 1));
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+                    {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                      (page) => (
+                        <PaginationItem key={page}>
+                          <PaginationLink
+                            href='#'
+                            onClick={(e) => {
+                              e.preventDefault();
+                              setCurrentPage(page);
+                            }}
+                            isActive={page === currentPage}>
+                            {page}
+                          </PaginationLink>
+                        </PaginationItem>
+                      )
+                    )}
+                    {currentPage < totalPages && (
+                      <PaginationItem>
+                        <PaginationNext
+                          href='#'
+                          onClick={(e) => {
+                            e.preventDefault();
+                            setCurrentPage((prev) =>
+                              Math.min(prev + 1, totalPages)
+                            );
+                          }}
+                        />
+                      </PaginationItem>
+                    )}
+                  </PaginationContent>
+                </Pagination>
               )}
             </>
           )}

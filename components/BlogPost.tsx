@@ -22,6 +22,8 @@ interface Post {
   image: string;
   categoryName: string;
   categoryId: string;
+  authorName?: string;
+  authorImage?: string;
 }
 
 export default function BlogPost({ post }: { post: Post }) {
@@ -56,6 +58,25 @@ export default function BlogPost({ post }: { post: Post }) {
             {post.categoryName}
           </span>
         </div>
+
+        {/* Add author information */}
+        {post.authorName && (
+          <div className='flex items-center justify-center gap-4 mb-8'>
+            {post.authorImage && (
+              <Image
+                src={post.authorImage}
+                alt={post.authorName}
+                width={40}
+                height={40}
+                className='rounded-full'
+              />
+            )}
+            <div className='text-center'>
+              <p className='text-[#2B4C7E] font-medium'>{post.authorName}</p>
+              <p className='text-[#2B4C7E]/70 text-sm'>Guest Author</p>
+            </div>
+          </div>
+        )}
 
         {/* Featured Image */}
         {post.image && (
