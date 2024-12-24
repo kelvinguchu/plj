@@ -23,7 +23,6 @@ if (!admin.apps.length) {
       } as admin.ServiceAccount),
     });
 
-    console.log("Firebase Admin initialized successfully");
   } catch (error: any) {
     console.error("Firebase admin initialization error:", {
       message: error.message,

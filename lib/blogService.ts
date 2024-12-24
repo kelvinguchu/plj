@@ -146,7 +146,6 @@ export const getSortedPostsData = async () => {
       };
     });
 
-    console.log("Fetched posts:", posts); // Debug log
     return posts;
   } catch (error) {
     console.error("Error fetching posts:", error);

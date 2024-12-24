@@ -135,7 +135,6 @@ export default function NewGuestPost() {
         (cat) => cat.id === selectedCategory
       );
 
-      console.log("Creating post with authorId:", userId);
       await createPendingPost({
         title,
         content,

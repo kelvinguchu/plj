@@ -46,8 +46,6 @@ export const News = () => {
     const processPosts = async () => {
       if (!posts || posts.length === 0) return;
 
-      console.log("Processing posts:", posts); // Debug log
-
       const latestPosts = posts
         .filter((post) => post.status === "published") // Only show published posts
         .slice(0, 4);
@@ -58,7 +56,6 @@ export const News = () => {
           contentPreview: await getContentPreview(post.content),
         }))
       );
-      console.log("Processed posts:", processed); // Debug log
       setProcessedPosts(processed);
     };
 

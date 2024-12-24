@@ -70,7 +70,6 @@ export async function POST(request: Request) {
         displayName: name,
         photoURL: imageUrl || undefined,
       });
-      console.log("Created auth user with uid:", userRecord.uid);
     } catch (authError: any) {
       return errorResponse(authError.message || "Failed to create user");
     }
@@ -85,10 +84,8 @@ export async function POST(request: Request) {
         createdAt: new Date().toISOString(),
         ...(imageUrl && { profilePicture: imageUrl }),
       };
-      console.log("Creating guest document with data:", guestData);
 
       const docRef = await db.collection("podcastGuests").add(guestData);
-      console.log("Created guest document with id:", docRef.id);
 
       return new NextResponse(
         JSON.stringify({

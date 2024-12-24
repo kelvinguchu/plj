@@ -307,8 +307,6 @@ export default function PodcastGuestManagement() {
     setLoading(true);
 
     try {
-      console.log("Starting podcast guest creation process...");
-
       const response = await fetch("/api/admin/create-guest", {
         method: "POST",
         headers: {
@@ -332,8 +330,6 @@ export default function PodcastGuestManagement() {
       if (!response.ok) {
         throw new Error(data.error || "Failed to create guest");
       }
-
-      console.log("Guest created successfully:", data);
 
       toast({
         title: "Success",

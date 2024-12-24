@@ -104,12 +104,7 @@ export default function GuestDashboard() {
           pendingPostsRef,
           where("authorId", "==", user.uid)
         );
-        console.log("Fetching pending posts for user:", user.uid);
         const pendingSnapshot = await getDocs(pendingQuery);
-        console.log(
-          "Pending posts raw data:",
-          pendingSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        );
         const pendingPosts = pendingSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -132,12 +127,7 @@ export default function GuestDashboard() {
           publishedPostsRef,
           where("authorId", "==", user.uid)
         );
-        console.log("Fetching published posts for user:", user.uid);
         const publishedSnapshot = await getDocs(publishedQuery);
-        console.log(
-          "Published posts raw data:",
-          publishedSnapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }))
-        );
         const publishedPosts = publishedSnapshot.docs.map((doc) => {
           const data = doc.data();
           return {
@@ -157,15 +147,6 @@ export default function GuestDashboard() {
           const dateA = new Date(a.submittedAt);
           const dateB = new Date(b.submittedAt);
           return dateB.getTime() - dateA.getTime();
-        });
-
-        console.log("Fetched posts:", {
-          pending: pendingPosts.length,
-          published: publishedPosts.length,
-          total: allPosts.length,
-          userUid: user.uid,
-          pendingPosts,
-          publishedPosts,
         });
 
         setPosts(allPosts as Post[]);
